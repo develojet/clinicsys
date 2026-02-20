@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
+import { userService } from '../services/userService';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
     const [credentials, setCredentials] = useState({ username: '', password: '' });
 
-    const handleSubmit = (e) => {
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Logging in with:", credentials);
-        // We will add the Axios call to Spring Boot here next
+        try {
+            const data = await userService.login(credentials);
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('role', data.role);
+            navigate('/dashboard');
+        } catch (error) {
+            alert("Login failed: " + (error.response?.data?.message || "Check your credentials"));
+        }
     };
 
     return (
@@ -19,18 +29,22 @@ const Login = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700">Username</label>
+                        {/* Changed label to text-black */}
+                        <label className="block text-sm font-medium text-black">Username</label>
                         <input
                             type="text"
-                            className="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            /* Added text-black here */
+                            className="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
                             onChange={(e) => setCredentials({...credentials, username: e.target.value})}
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700">Password</label>
+                        {/* Changed label to text-black */}
+                        <label className="block text-sm font-medium text-black">Password</label>
                         <input
                             type="password"
-                            className="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            /* Added text-black here */
+                            className="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
                             onChange={(e) => setCredentials({...credentials, password: e.target.value})}
                         />
                     </div>

@@ -3,7 +3,7 @@ package com.clinic.backend.service;
 import com.clinic.backend.model.User;
 import com.clinic.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,7 +14,7 @@ public class UserService {
     private UserRepository userRepository;
 
     @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder;
 
     public User createUser(User user) {
         user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
