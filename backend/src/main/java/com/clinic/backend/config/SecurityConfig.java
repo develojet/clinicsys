@@ -13,10 +13,17 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Arrays;
+import com.clinic.backend.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Autowired
+    private JwtAuthenticationFilter jwtFilter; // 1. Inject your filter
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -27,14 +34,22 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults()) // Fix: links to the bean below
+                .cors(Customizer.withDefaults())
+                /* 2. Set session to STATELESS.
+                   This tells Spring not to create a cookie-based session,
+                   forcing it to look at the JWT for every request.
+                */
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // Add this to allow login!
+                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/appointments/**").hasAnyAuthority("ADMIN", "STAFF")
                         .anyRequest().authenticated()
                 )
-                .httpBasic(Customizer.withDefaults());
+                /* 3. Add the JWT Filter!
+                   This is the "handshake" that validates the token from React.
+                */
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

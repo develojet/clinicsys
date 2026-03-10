@@ -1,6 +1,15 @@
 import api from './api';
 
+// src/services/userService.js
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    console.log("Token being sent:", token); // Debug line
+    return {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+};
 export const userService = {
+
     // Login call
     login: async (credentials) => {
         const response = await api.post('/auth/login', credentials);
@@ -8,10 +17,11 @@ export const userService = {
     },
 
     // Get all users (Admin only)
-    getUsers: async () => {
+    getAllUsers: async () => {
         const response = await api.get('/users');
         return response.data;
     },
+
 
     // Create new user
     createUser: async (userData) => {

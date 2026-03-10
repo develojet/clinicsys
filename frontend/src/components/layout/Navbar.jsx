@@ -31,7 +31,7 @@ const Navbar = () => {
                             )}
 
                             <NavLink to="/patients" icon={<UserRound size={18}/>} label="Patients" />
-                            <NavLink to="/appointments" icon={<Calendar size={18}/>} label="Schedule" />
+                            <NavLink to="/appointments" icon={<Calendar size={18}/>} label="Appointments" />
                         </div>
                     </div>
 
