@@ -27,5 +27,15 @@ export const userService = {
     createUser: async (userData) => {
         const response = await api.post('/users', userData);
         return response.data;
+    },
+
+    updateUser: async (id, userData) => {
+        const response = await axios.put(`/users/${id}`, userData, getAuthHeaders());
+        return response.data;
+    },
+
+    deleteUser: async (id) => {
+        const response = await axios.delete(`/users/${id}`, getAuthHeaders());
+        return response.data;
     }
 };
