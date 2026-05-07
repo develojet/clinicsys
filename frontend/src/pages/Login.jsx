@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { userService } from '../services/userService';
 import { useNavigate } from 'react-router-dom';
-
+import { DISABLE_LOGIN } from '../config';
 const Login = () => {
     const [credentials, setCredentials] = useState({ username: '', password: '' });
 
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (DISABLE_LOGIN) {
+            // Optionally set dummy token/role
+            localStorage.setItem('token', 'dummy-token');
+            localStorage.setItem('role', 'user');
+            navigate('/dashboard');
+        }
+    }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
