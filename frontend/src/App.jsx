@@ -16,7 +16,7 @@ import Profile from "./pages/Profile.jsx";
 
 function App() {
   return (
-    <Router>
+    <Router basename="/clinic">
       <Routes>
         {/* 1. Public Route */}
         <Route path="/" element={<Login />} />
