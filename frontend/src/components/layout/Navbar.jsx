@@ -8,6 +8,7 @@ import {
     LogOut,
     User
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext'; // Adjust path if AuthContext is in a different folder
 
 // Use the exact path to your uploaded logo asset
 import JHRLogo from '../../assets/jhr-logo.png';
@@ -15,10 +16,26 @@ import JHRLogo from '../../assets/jhr-logo.png';
 const Navbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const userRole = localStorage.getItem('role') || 'STAFF';
+    const { user, logout } = useAuth();
+
+    // 1. Extract role/access level safely from AuthContext or localStorage fallbacks
+    const rawRole =
+        user?.accessLevel ||
+        user?.role ||
+        localStorage.getItem('accessLevel') ||
+        localStorage.getItem('role') ||
+        'STAFF';
+
+    // 2. Normalize role string (removes 'ROLE_' prefix if present and converts to uppercase)
+    const userRole = String(rawRole).replace(/^ROLE_/i, '').toUpperCase();
+    const isAdmin = userRole === 'ADMIN';
 
     const handleLogout = () => {
-        localStorage.clear();
+        if (logout) {
+            logout();
+        } else {
+            localStorage.clear();
+        }
         navigate('/');
     };
 
@@ -43,7 +60,8 @@ const Navbar = () => {
                         <div className="flex items-center gap-1.5">
                             <NavLink to="/dashboard" label="Dashboard" active={isActive('/dashboard')} />
 
-                            {userRole === 'ADMIN' && (
+                            {/* Show Users link if isAdmin is true */}
+                            {isAdmin && (
                                 <NavLink to="/users" label="Users" active={isActive('/users')} />
                             )}
 

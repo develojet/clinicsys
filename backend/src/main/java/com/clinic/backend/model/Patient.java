@@ -1,33 +1,82 @@
 package com.clinic.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Entity
 @Table(name = "patients")
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Patient {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer patientId;
+    @Column(name = "patient_id")
+    private Integer id;
 
-    @Column(nullable = false)
+    @Column(unique = true, nullable = false)
+    private String patientCode; // e.g., "PX-1021"
+
+    private String photoUrl;
+
+    @Column(name = "first_name")
     private String firstName;
 
-    @Column(nullable = false)
+    @Column(name = "last_name")
     private String lastName;
 
-    private String contactNumber;
+    @Column(name = "family_name")
+    private String familyName;
 
-    private LocalDate dateOfBirth;
+    @Column(name = "given_name")
+    private String givenName;
 
-    @Column(unique = true)
-    private String emailAddress;
+    private String middleName;
 
-    // Relationship to Appointments
-    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL)
-    private List<Appointment> appointments;
+    private LocalDate birthDate;
+
+    private Integer age;
+
+    private String sex; // Female, Male, etc.
+
+    private String status; // Single, Married, Divorced, etc.
+
+    private String mobileNumber;
+
+    @Column(length = 500)
+    private String address;
+
+    @Column(length = 500)
+    private String employerAddress;
+
+    private String occupation;
+
+    private String spouseName;
+
+    private String insurance;
+
+    private String hmo;
+
+    private String philhealthNo;
+
+    @PrePersist
+    @PreUpdate
+    public void syncNames() {
+        if ((firstName == null || firstName.isBlank()) && givenName != null && !givenName.isBlank()) {
+            firstName = givenName;
+        }
+        if ((lastName == null || lastName.isBlank()) && familyName != null && !familyName.isBlank()) {
+            lastName = familyName;
+        }
+        if ((givenName == null || givenName.isBlank()) && firstName != null && !firstName.isBlank()) {
+            givenName = firstName;
+        }
+        if ((familyName == null || familyName.isBlank()) && lastName != null && !lastName.isBlank()) {
+            familyName = lastName;
+        }
+    }
 }
