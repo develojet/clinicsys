@@ -2,6 +2,7 @@ package com.clinic.backend.model.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 public class AppointmentRequestDto {
     private Integer patientId;
@@ -15,6 +16,7 @@ public class AppointmentRequestDto {
     private String reason;
     private String consultationType;
     private String status;
+    private Map<String, Object> consultationData;
 
     public Integer getPatientId() {
         return patientId;
@@ -102,5 +104,13 @@ public class AppointmentRequestDto {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Map<String, Object> getConsultationData() {
+        return consultationData;
+    }
+
+    public void setConsultationData(Map<String, Object> consultationData) {
+        this.consultationData = consultationData;
     }
 }

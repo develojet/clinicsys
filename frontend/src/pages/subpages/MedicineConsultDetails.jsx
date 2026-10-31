@@ -8,13 +8,20 @@ import {
 // Shared Components
 import PrescriptionModule from '../../components/consults/PrescriptionModule';
 import AttachmentModule from '../../components/consults/AttachmentModule';
+import ConsultationSaveActions from '../../components/consults/ConsultationSaveActions';
+import useConsultationFields from '../../hooks/useConsultationFields';
 
-const MedicineConsultDetails = ({ visitData, onSave }) => {
+const MedicineConsultDetails = ({ visitData, onSave, onSaveProgress, onDirtyChange, registerConsultationSnapshot, saving }) => {
     const [currentStep, setCurrentStep] = useState(1);
+    const { rootRef, buildConsultationData, captureCurrentStep } = useConsultationFields(visitData, currentStep);
 
     // Local state for the shared modules
-    const [prescriptions, setPrescriptions] = useState([{ id: 1, med: '', dose: '', freq: '', duration: '' }]);
-    const [attachments, setAttachments] = useState([]);
+    const [prescriptions, setPrescriptions] = useState(() =>
+        visitData.consultationData?.prescriptions?.length
+            ? visitData.consultationData.prescriptions
+            : [{ id: 1, med: '', dose: '', freq: '', duration: '' }]
+    );
+    const attachments = [];
 
     // Reset to step 1 when the selected patient visit changes
     useEffect(() => {
@@ -30,16 +37,25 @@ const MedicineConsultDetails = ({ visitData, onSave }) => {
         { id: 6, label: "Files", icon: Paperclip }
     ];
 
-    const handleFinalize = () => {
-        const finalData = {
+    const createConsultation = () => ({
             ...visitData,
             prescriptions,
             attachments,
+            consultationData: buildConsultationData('Medicine', prescriptions, attachments),
             completedAt: new Date().toISOString()
-        };
+    });
+
+    const handleFinalize = () => {
+        const finalData = createConsultation();
         console.log("Saving Medicine Consult:", finalData);
         if (onSave) onSave(finalData);
     };
+
+    const handleSaveProgress = () => onSaveProgress?.(createConsultation());
+
+    useEffect(() => {
+        registerConsultationSnapshot?.(createConsultation);
+    });
 
     const InputField = ({ label, value, placeholder = "", type = "text", dark = false }) => (
         <div className="flex flex-col text-left">
@@ -52,23 +68,20 @@ const MedicineConsultDetails = ({ visitData, onSave }) => {
                     dark ? 'border-slate-700 text-white focus:border-blue-400' : 'border-slate-200 focus:border-blue-500 text-slate-800'
                 }`}
                 placeholder={placeholder}
-                value={value}
-                readOnly
+                defaultValue={value}
             />
         </div>
     );
 
     const CheckboxField = ({ label, checked }) => (
         <label className="flex items-center gap-2 cursor-pointer group">
-            <div className={`w-4 h-4 rounded border flex items-center justify-center transition ${checked ? 'bg-blue-600 border-blue-600' : 'border-slate-300 group-hover:border-blue-300'}`}>
-                {checked && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-            </div>
+            <input type="checkbox" defaultChecked={checked} className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
             <span className="text-[11px] text-slate-600 uppercase font-semibold">{label}</span>
         </label>
     );
 
     return (
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
+        <div ref={rootRef} onChange={() => { captureCurrentStep(); onDirtyChange?.(); }} className="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
             {/* Header Badge - Positioned to float over the border */}
             <div className="absolute top-0 left-10 -translate-y-1/2 bg-slate-900 text-white px-5 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase shadow-lg z-10">
                 Medicine Consultation #{visitData.id} — {visitData.date}
@@ -98,7 +111,7 @@ const MedicineConsultDetails = ({ visitData, onSave }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
                             <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">Chief Complaint</label>
-                            <textarea className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm italic text-slate-600" rows="2" value={visitData.complaint} readOnly />
+                            <textarea className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm italic text-slate-600" rows="2" defaultValue={visitData.complaint} />
                         </div>
                         <div>
                             <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">HPI</label>
@@ -181,33 +194,35 @@ const MedicineConsultDetails = ({ visitData, onSave }) => {
                 <PrescriptionModule
                     prescriptions={prescriptions}
                     setPrescriptions={setPrescriptions}
+                    onDirtyChange={onDirtyChange}
                 />
             )}
 
             {/* STEP 6: ATTACHMENTS (REUSABLE) */}
             {currentStep === 6 && (
-                <AttachmentModule onFinalize={handleFinalize} />
+                <AttachmentModule />
             )}
 
             {/* Step Controls */}
-            <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center">
-                <button
-                    onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
-                    className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <ChevronLeft size={16} /> Previous
-                </button>
-
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                    Step {currentStep} of {steps.length}
-                </span>
-
-                <button
-                    onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
-                    className={`text-[10px] font-black uppercase tracking-widest text-blue-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-blue-700'}`}
-                >
-                    Next Section <ChevronRight size={16} />
-                </button>
+            <div className="mt-10 border-t border-slate-100 pt-6">
+                <div className="mb-5 flex justify-between items-center">
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
+                        className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <ChevronLeft size={16} /> Previous
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                        Step {currentStep} of {steps.length}
+                    </span>
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
+                        className={`text-[10px] font-black uppercase tracking-widest text-blue-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-blue-700'}`}
+                    >
+                        Next Section <ChevronRight size={16} />
+                    </button>
+                </div>
+                <ConsultationSaveActions onSaveProgress={handleSaveProgress} onSave={handleFinalize} saving={saving} />
             </div>
         </div>
     );

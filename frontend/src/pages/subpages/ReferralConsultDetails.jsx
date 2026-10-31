@@ -8,13 +8,20 @@ import {
 // Shared Components
 import PrescriptionModule from '../../components/consults/PrescriptionModule';
 import AttachmentModule from '../../components/consults/AttachmentModule';
+import ConsultationSaveActions from '../../components/consults/ConsultationSaveActions';
+import useConsultationFields from '../../hooks/useConsultationFields';
 
-const ReferralConsultDetails = ({ visitData, onSave }) => {
+const ReferralConsultDetails = ({ visitData, onSave, onSaveProgress, onDirtyChange, registerConsultationSnapshot, saving }) => {
     const [currentStep, setCurrentStep] = useState(1);
+    const { rootRef, buildConsultationData, captureCurrentStep } = useConsultationFields(visitData, currentStep);
 
     // Local state for shared modules
-    const [prescriptions, setPrescriptions] = useState([{ id: 1, med: '', dose: '', freq: '', duration: '' }]);
-    const [attachments, setAttachments] = useState([]);
+    const [prescriptions, setPrescriptions] = useState(() =>
+        visitData.consultationData?.prescriptions?.length
+            ? visitData.consultationData.prescriptions
+            : [{ id: 1, med: '', dose: '', freq: '', duration: '' }]
+    );
+    const attachments = [];
 
     useEffect(() => {
         setCurrentStep(1);
@@ -29,17 +36,25 @@ const ReferralConsultDetails = ({ visitData, onSave }) => {
         { id: 6, label: "Files", icon: Paperclip }
     ];
 
-    const handleFinalize = () => {
-        const finalData = {
+    const createConsultation = () => ({
             ...visitData,
             prescriptions,
             attachments,
+            consultationData: buildConsultationData('Referral', prescriptions, attachments),
             type: 'Referral',
-            completedAt: new Date().toISOString()
-        };
+    });
+
+    const handleFinalize = () => {
+        const finalData = createConsultation();
         console.log("Submitting Referral:", finalData);
         if (onSave) onSave(finalData);
     };
+
+    const handleSaveProgress = () => onSaveProgress?.(createConsultation());
+
+    useEffect(() => {
+        registerConsultationSnapshot?.(createConsultation);
+    });
 
     // Internal UI Components
     const DeptBox = ({ title, color, children }) => (
@@ -59,7 +74,7 @@ const ReferralConsultDetails = ({ visitData, onSave }) => {
     );
 
     return (
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
+        <div ref={rootRef} onChange={() => { captureCurrentStep(); onDirtyChange?.(); }} className="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
 
             {/* Header Badge */}
             <div className="absolute top-0 right-10 -translate-y-1/2 bg-amber-500 text-white px-5 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase shadow-lg z-10">
@@ -94,8 +109,14 @@ const ReferralConsultDetails = ({ visitData, onSave }) => {
                     </DeptBox>
 
                     <DeptBox title="Receiving Department" color={{ bg: 'bg-slate-50/50', border: 'border-slate-200', text: 'text-slate-400' }}>
-                        <DataRow label="Date Received" value="---" />
-                        <DataRow label="Time" value="---" />
+                        <label className="flex flex-col border-b border-slate-100 pb-2">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Date Received</span>
+                            <input type="date" className="mt-1 bg-transparent text-sm font-bold text-slate-800 outline-none" />
+                        </label>
+                        <label className="flex flex-col border-b border-slate-100 pb-2">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Time</span>
+                            <input type="time" className="mt-1 bg-transparent text-sm font-bold text-slate-800 outline-none" />
+                        </label>
                         <div className="flex flex-col">
                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Emergency?</span>
                             <input type="checkbox" className="mt-1 w-4 h-4 rounded text-amber-500 border-slate-300" />
@@ -169,33 +190,35 @@ const ReferralConsultDetails = ({ visitData, onSave }) => {
                 <PrescriptionModule
                     prescriptions={prescriptions}
                     setPrescriptions={setPrescriptions}
+                    onDirtyChange={onDirtyChange}
                 />
             )}
 
             {/* --- STEP 6: ATTACHMENTS --- */}
             {currentStep === 6 && (
-                <AttachmentModule onFinalize={handleFinalize} />
+                <AttachmentModule />
             )}
 
             {/* Step Controls */}
-            <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center">
-                <button
-                    onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
-                    className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <ChevronLeft size={16} /> Previous
-                </button>
-
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                    Step {currentStep} of {steps.length}
-                </span>
-
-                <button
-                    onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
-                    className={`text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-amber-700'}`}
-                >
-                    Next Section <ChevronRight size={16} />
-                </button>
+            <div className="mt-10 border-t border-slate-100 pt-6">
+                <div className="mb-5 flex justify-between items-center">
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
+                        className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <ChevronLeft size={16} /> Previous
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                        Step {currentStep} of {steps.length}
+                    </span>
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
+                        className={`text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-amber-700'}`}
+                    >
+                        Next Section <ChevronRight size={16} />
+                    </button>
+                </div>
+                <ConsultationSaveActions onSaveProgress={handleSaveProgress} onSave={handleFinalize} saving={saving} />
             </div>
         </div>
     );

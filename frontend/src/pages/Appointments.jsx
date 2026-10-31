@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Calendar,
   Plus,
@@ -8,7 +8,7 @@ import {
   User,
   Trash2,
 } from "lucide-react";
-import { getAppointments, createAppointment, deleteAppointment } from "../services/appointmentService";
+import { getAppointments, createAppointment, updateAppointment, deleteAppointment } from "../services/appointmentService";
 import { getPatients } from "../services/patientService";
 
 import FollowupConsultDetails from "./subpages/FollowupConsultDetails";
@@ -51,6 +51,12 @@ const Appointments = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [loadError, setLoadError] = useState("");
+  const [consultationError, setConsultationError] = useState("");
+  const [consultationSavedMessage, setConsultationSavedMessage] = useState("");
+  const [savingConsultation, setSavingConsultation] = useState(false);
+  const [consultationDirty, setConsultationDirty] = useState(false);
+  const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
+  const consultationSnapshotRef = useRef(null);
   const [formData, setFormData] = useState({
     patientId: "",
     firstName: "",
@@ -154,6 +160,67 @@ const Appointments = () => {
     }
   };
 
+  const handleConsultationSave = async (consultation, closeAfterSave, closeAfterProgressSave = false) => {
+    setSavingConsultation(true);
+    setConsultationError("");
+    setConsultationSavedMessage("");
+    try {
+      const response = await updateAppointment(selectedAppointment.id, {
+        consultationData: consultation.consultationData,
+        ...(consultation.consultationData.chiefComplaint !== undefined
+          ? { reason: consultation.consultationData.chiefComplaint }
+          : {}),
+        ...(closeAfterSave ? { status: "COMPLETED" } : {}),
+      });
+      const updatedAppointment = toAppointmentView(response.data);
+      setAppointments((current) =>
+        current.map((appointment) =>
+          appointment.id === selectedAppointment.id
+            ? updatedAppointment
+            : appointment,
+        ),
+      );
+      setSelectedAppointment(updatedAppointment);
+      setConsultationDirty(false);
+      if (closeAfterSave || closeAfterProgressSave) {
+        setIsConsultModalOpen(false);
+        setShowUnsavedPrompt(false);
+      } else {
+        setConsultationSavedMessage("Progress saved. You can continue editing this consultation.");
+      }
+    } catch (error) {
+      console.error("Error saving consultation", error);
+      setConsultationError(
+        error.response?.data?.message || "Could not save consultation. Please try again.",
+      );
+    } finally {
+      setSavingConsultation(false);
+    }
+  };
+
+  const handleRequestConsultationClose = () => {
+    if (consultationDirty) {
+      setShowUnsavedPrompt(true);
+      return;
+    }
+    setIsConsultModalOpen(false);
+  };
+
+  const handleSaveAndCloseFromPrompt = () => {
+    const snapshot = consultationSnapshotRef.current?.();
+    if (!snapshot) {
+      setConsultationError("Could not read the consultation. Please try saving from the form.");
+      return;
+    }
+    handleConsultationSave(snapshot, false, true);
+  };
+
+  const handleDiscardAndClose = () => {
+    setConsultationDirty(false);
+    setShowUnsavedPrompt(false);
+    setIsConsultModalOpen(false);
+  };
+
   const filteredAppointments = useMemo(() => {
     const search = searchTerm.toLowerCase();
     return appointments.filter((appointment) =>
@@ -221,6 +288,11 @@ const Appointments = () => {
                 key={appointment.id}
                 onClick={() => {
                   setSelectedAppointment(appointment);
+                  setConsultationDirty(false);
+                  setShowUnsavedPrompt(false);
+                  setConsultationError("");
+                  setConsultationSavedMessage("");
+                  consultationSnapshotRef.current = null;
                   setIsConsultModalOpen(true);
                 }}
                 className="hover:bg-emerald-50/30 transition-colors cursor-pointer group"
@@ -282,7 +354,9 @@ const Appointments = () => {
           <div className="w-full max-w-5xl max-h-[95vh] overflow-y-auto custom-scrollbar rounded-[2.5rem] pt-12 pb-4 px-4">
             <div className="relative">
               <button
-                onClick={() => setIsConsultModalOpen(false)}
+                onClick={handleRequestConsultationClose}
+                disabled={savingConsultation}
+                aria-label="Close consultation"
                 className="absolute -top-6 -right-2 md:-right-4 bg-white p-3 rounded-full shadow-2xl z-[140] hover:bg-slate-50 transition-all cursor-pointer border border-slate-100 flex items-center justify-center active:scale-90"
               >
                 <X size={20} className="text-slate-500" />
@@ -290,16 +364,22 @@ const Appointments = () => {
               {(() => {
                 const props = {
                   visitData: selectedAppointment,
-                  onSave: () => setIsConsultModalOpen(false),
+                  onSave: (consultation) => handleConsultationSave(consultation, true),
+                  onSaveProgress: (consultation) => handleConsultationSave(consultation, false),
+                  onDirtyChange: () => setConsultationDirty(true),
+                  registerConsultationSnapshot: (getSnapshot) => {
+                    consultationSnapshotRef.current = getSnapshot;
+                  },
+                  saving: savingConsultation,
                 };
                 switch (selectedAppointment.type) {
-                  case "Opta": return <OptaConsultDetails {...props} />;
-                  case "Follow-up": return <FollowupConsultDetails {...props} />;
-                  case "ENT": return <ENTConsultDetails {...props} />;
-                  case "Medicine": return <MedicineConsultDetails {...props} />;
-                  case "OB": return <OBConsultDetails {...props} />;
-                  case "Pedia": return <PediaConsultDetails {...props} />;
-                  case "Referral": return <ReferralConsultDetails {...props} />;
+                  case "Opta": return <OptaConsultDetails key={selectedAppointment.id} {...props} />;
+                  case "Follow-up": return <FollowupConsultDetails key={selectedAppointment.id} {...props} />;
+                  case "ENT": return <ENTConsultDetails key={selectedAppointment.id} {...props} />;
+                  case "Medicine": return <MedicineConsultDetails key={selectedAppointment.id} {...props} />;
+                  case "OB": return <OBConsultDetails key={selectedAppointment.id} {...props} />;
+                  case "Pedia": return <PediaConsultDetails key={selectedAppointment.id} {...props} />;
+                  case "Referral": return <ReferralConsultDetails key={selectedAppointment.id} {...props} />;
                   default: return (
                     <div className="bg-white p-20 rounded-[2.5rem] text-center border border-slate-100 shadow-xl">
                       <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">
@@ -309,6 +389,64 @@ const Appointments = () => {
                   );
                 }
               })()}
+              {consultationError && (
+                <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                  {consultationError}
+                </p>
+              )}
+              {consultationSavedMessage && !savingConsultation && (
+                <p role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                  {consultationSavedMessage}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUnsavedPrompt && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/70 p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="unsaved-consultation-title"
+          aria-describedby="unsaved-consultation-description"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 id="unsaved-consultation-title" className="text-lg font-black text-slate-900">
+              Unsaved consultation changes
+            </h2>
+            <p id="unsaved-consultation-description" className="mt-2 text-sm text-slate-600">
+              You have changes that have not been saved. Would you like to save them before closing?
+            </p>
+            {consultationError && (
+              <p role="alert" className="mt-3 text-sm text-red-600">{consultationError}</p>
+            )}
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowUnsavedPrompt(false)}
+                disabled={savingConsultation}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Continue Editing
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardAndClose}
+                disabled={savingConsultation}
+                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-60"
+              >
+                Discard &amp; Close
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAndCloseFromPrompt}
+                disabled={savingConsultation}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {savingConsultation ? "Saving..." : "Save Progress & Close"}
+              </button>
             </div>
           </div>
         </div>

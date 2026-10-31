@@ -2,13 +2,21 @@
 import React from 'react';
 import { Pill, PlusCircle, Trash2, Printer } from 'lucide-react';
 
-const PrescriptionModule = ({ prescriptions, setPrescriptions }) => {
+const PrescriptionModule = ({ prescriptions, setPrescriptions, onDirtyChange }) => {
     const addMedicine = () => {
         setPrescriptions([...prescriptions, { id: Date.now(), med: '', dose: '', freq: '', duration: '' }]);
+        onDirtyChange?.();
     };
 
     const removeMedicine = (id) => {
         setPrescriptions(prescriptions.filter(rx => rx.id !== id));
+        onDirtyChange?.();
+    };
+
+    const updateMedicine = (id, field, value) => {
+        setPrescriptions(prescriptions.map((rx) =>
+            rx.id === id ? { ...rx, [field]: value } : rx
+        ));
     };
 
     return (
@@ -28,17 +36,21 @@ const PrescriptionModule = ({ prescriptions, setPrescriptions }) => {
             <div className="space-y-3">
                 {prescriptions.map((rx) => (
                     <div key={rx.id} className="grid grid-cols-12 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100 items-end">
-                        <div className="col-span-5">
+                        <div className="col-span-4">
                             <label className="text-[9px] font-black text-slate-400 uppercase">Medication Name</label>
-                            <input className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs" placeholder="e.g. Amoxicillin 500mg" />
+                            <input value={rx.med} onChange={(event) => updateMedicine(rx.id, 'med', event.target.value)} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs" placeholder="e.g. Amoxicillin 500mg" />
                         </div>
                         <div className="col-span-2">
                             <label className="text-[9px] font-black text-slate-400 uppercase">Sig / Dosage</label>
-                            <input className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs" placeholder="1 tab" />
+                            <input value={rx.dose} onChange={(event) => updateMedicine(rx.id, 'dose', event.target.value)} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs" placeholder="1 tab" />
                         </div>
-                        <div className="col-span-3">
+                        <div className="col-span-2">
                             <label className="text-[9px] font-black text-slate-400 uppercase">Frequency</label>
-                            <input className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs" placeholder="3x a day" />
+                            <input value={rx.freq} onChange={(event) => updateMedicine(rx.id, 'freq', event.target.value)} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs" placeholder="3x a day" />
+                        </div>
+                        <div className="col-span-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase">Duration</label>
+                            <input value={rx.duration} onChange={(event) => updateMedicine(rx.id, 'duration', event.target.value)} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs" placeholder="5 days" />
                         </div>
                         <div className="col-span-2 flex justify-end">
                             <button

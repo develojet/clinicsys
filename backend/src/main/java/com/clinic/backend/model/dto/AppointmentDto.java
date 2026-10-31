@@ -1,6 +1,7 @@
 package com.clinic.backend.model.dto;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 public class AppointmentDto {
     private Integer id;
@@ -10,6 +11,7 @@ public class AppointmentDto {
     private String reason;
     private String consultationType;
     private String createdBy;
+    private Map<String, Object> consultationData;
 
     public Integer getId() {
         return id;
@@ -65,5 +67,13 @@ public class AppointmentDto {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public Map<String, Object> getConsultationData() {
+        return consultationData;
+    }
+
+    public void setConsultationData(Map<String, Object> consultationData) {
+        this.consultationData = consultationData;
     }
 }

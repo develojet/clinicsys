@@ -8,13 +8,20 @@ import {
 // Shared Components
 import PrescriptionModule from '../../components/consults/PrescriptionModule';
 import AttachmentModule from '../../components/consults/AttachmentModule';
+import ConsultationSaveActions from '../../components/consults/ConsultationSaveActions';
+import useConsultationFields from '../../hooks/useConsultationFields';
 
-const OBConsultDetails = ({ visitData, onSave }) => {
+const OBConsultDetails = ({ visitData, onSave, onSaveProgress, onDirtyChange, registerConsultationSnapshot, saving }) => {
     const [currentStep, setCurrentStep] = useState(1);
+    const { rootRef, buildConsultationData, captureCurrentStep } = useConsultationFields(visitData, currentStep);
 
     // Local state for shared modules
-    const [prescriptions, setPrescriptions] = useState([{ id: 1, med: '', dose: '', freq: '', duration: '' }]);
-    const [attachments, setAttachments] = useState([]);
+    const [prescriptions, setPrescriptions] = useState(() =>
+        visitData.consultationData?.prescriptions?.length
+            ? visitData.consultationData.prescriptions
+            : [{ id: 1, med: '', dose: '', freq: '', duration: '' }]
+    );
+    const attachments = [];
 
     useEffect(() => {
         setCurrentStep(1);
@@ -30,17 +37,26 @@ const OBConsultDetails = ({ visitData, onSave }) => {
         { id: 7, label: "Files", icon: Paperclip }
     ];
 
-    const handleFinalize = () => {
-        const finalData = {
+    const createConsultation = () => ({
             ...visitData,
             prescriptions,
             attachments,
+            consultationData: buildConsultationData('OB', prescriptions, attachments),
             specialty: 'OB-GYN',
             completedAt: new Date().toISOString()
-        };
+    });
+
+    const handleFinalize = () => {
+        const finalData = createConsultation();
         console.log("Saving OB Record:", finalData);
         if (onSave) onSave(finalData);
     };
+
+    const handleSaveProgress = () => onSaveProgress?.(createConsultation());
+
+    useEffect(() => {
+        registerConsultationSnapshot?.(createConsultation);
+    });
 
     const InputField = ({ label, value, placeholder = "", type = "text" }) => (
         <div className="flex flex-col text-left">
@@ -49,23 +65,20 @@ const OBConsultDetails = ({ visitData, onSave }) => {
                 type={type}
                 className="border-b border-slate-200 focus:border-pink-500 outline-none p-1 text-sm bg-transparent transition-colors text-slate-800"
                 placeholder={placeholder}
-                value={value}
-                readOnly
+                defaultValue={value}
             />
         </div>
     );
 
     const CheckboxField = ({ label, checked }) => (
         <label className="flex items-center gap-2 cursor-pointer group">
-            <div className={`w-4 h-4 rounded border flex items-center justify-center transition ${checked ? 'bg-pink-600 border-pink-600' : 'border-slate-300'}`}>
-                {checked && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-            </div>
+            <input type="checkbox" defaultChecked={checked} className="w-4 h-4 rounded border-slate-300 text-pink-600 focus:ring-pink-500" />
             <span className="text-[11px] text-slate-600 uppercase font-semibold">{label}</span>
         </label>
     );
 
     return (
-        <div className="bg-white rounded-3xl shadow-xl border border-pink-100 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
+        <div ref={rootRef} onChange={() => { captureCurrentStep(); onDirtyChange?.(); }} className="bg-white rounded-3xl shadow-xl border border-pink-100 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
             {/* Header Badge */}
             <div className="absolute top-0 right-10 -translate-y-1/2 bg-pink-600 text-white px-5 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase shadow-lg z-10">
                 {visitData.type} Consultation #{visitData.id} — {visitData.date}
@@ -193,33 +206,35 @@ const OBConsultDetails = ({ visitData, onSave }) => {
                 <PrescriptionModule
                     prescriptions={prescriptions}
                     setPrescriptions={setPrescriptions}
+                    onDirtyChange={onDirtyChange}
                 />
             )}
 
             {/* STEP 7: ATTACHMENTS */}
             {currentStep === 7 && (
-                <AttachmentModule onFinalize={handleFinalize} />
+                <AttachmentModule />
             )}
 
             {/* Navigation Footer */}
-            <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center">
-                <button
-                    onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
-                    className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <ChevronLeft size={16} /> Previous
-                </button>
-
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                    Step {currentStep} of {steps.length}
-                </span>
-
-                <button
-                    onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
-                    className={`text-[10px] font-black uppercase tracking-widest text-pink-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-pink-700'}`}
-                >
-                    Next Section <ChevronRight size={16} />
-                </button>
+            <div className="mt-10 border-t border-slate-100 pt-6">
+                <div className="mb-5 flex justify-between items-center">
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
+                        className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <ChevronLeft size={16} /> Previous
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                        Step {currentStep} of {steps.length}
+                    </span>
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
+                        className={`text-[10px] font-black uppercase tracking-widest text-pink-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-pink-700'}`}
+                    >
+                        Next Section <ChevronRight size={16} />
+                    </button>
+                </div>
+                <ConsultationSaveActions onSaveProgress={handleSaveProgress} onSave={handleFinalize} saving={saving} />
             </div>
         </div>
     );

@@ -8,13 +8,20 @@ import {
 // Shared Components
 import PrescriptionModule from '../../components/consults/PrescriptionModule';
 import AttachmentModule from '../../components/consults/AttachmentModule';
+import ConsultationSaveActions from '../../components/consults/ConsultationSaveActions';
+import useConsultationFields from '../../hooks/useConsultationFields';
 
-const PediaConsultDetails = ({ visitData, onSave }) => {
+const PediaConsultDetails = ({ visitData, onSave, onSaveProgress, onDirtyChange, registerConsultationSnapshot, saving }) => {
     const [currentStep, setCurrentStep] = useState(1);
+    const { rootRef, buildConsultationData, captureCurrentStep } = useConsultationFields(visitData, currentStep);
 
     // Local state for shared modules
-    const [prescriptions, setPrescriptions] = useState([{ id: 1, med: '', dose: '', freq: '', duration: '' }]);
-    const [attachments, setAttachments] = useState([]);
+    const [prescriptions, setPrescriptions] = useState(() =>
+        visitData.consultationData?.prescriptions?.length
+            ? visitData.consultationData.prescriptions
+            : [{ id: 1, med: '', dose: '', freq: '', duration: '' }]
+    );
+    const attachments = [];
 
     useEffect(() => {
         setCurrentStep(1);
@@ -29,17 +36,25 @@ const PediaConsultDetails = ({ visitData, onSave }) => {
         { id: 6, label: "Files", icon: Paperclip }
     ];
 
-    const handleFinalize = () => {
-        const finalData = {
+    const createConsultation = () => ({
             ...visitData,
             prescriptions,
             attachments,
+            consultationData: buildConsultationData('Pedia', prescriptions, attachments),
             specialty: 'Pediatrics',
-            completedAt: new Date().toISOString()
-        };
+    });
+
+    const handleFinalize = () => {
+        const finalData = createConsultation();
         console.log("Saving Pediatric Record:", finalData);
         if (onSave) onSave(finalData);
     };
+
+    const handleSaveProgress = () => onSaveProgress?.(createConsultation());
+
+    useEffect(() => {
+        registerConsultationSnapshot?.(createConsultation);
+    });
 
     const InputField = ({ label, value, placeholder = "", type = "text" }) => (
         <div className="flex flex-col text-left">
@@ -48,14 +63,13 @@ const PediaConsultDetails = ({ visitData, onSave }) => {
                 type={type}
                 className="border-b border-slate-200 focus:border-cyan-500 outline-none p-1 text-sm bg-transparent transition-colors text-slate-800"
                 placeholder={placeholder}
-                value={value}
-                readOnly
+                defaultValue={value}
             />
         </div>
     );
 
     return (
-        <div className="bg-white rounded-3xl shadow-xl border border-cyan-100 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
+        <div ref={rootRef} onChange={() => { captureCurrentStep(); onDirtyChange?.(); }} className="bg-white rounded-3xl shadow-xl border border-cyan-100 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
             {/* Header Badge */}
             <div className="absolute top-0 right-10 -translate-y-1/2 bg-cyan-600 text-white px-5 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase shadow-lg z-10">
                 Pediatric Consultation #{visitData.id} — {visitData.date}
@@ -175,33 +189,35 @@ const PediaConsultDetails = ({ visitData, onSave }) => {
                 <PrescriptionModule
                     prescriptions={prescriptions}
                     setPrescriptions={setPrescriptions}
+                    onDirtyChange={onDirtyChange}
                 />
             )}
 
             {/* --- STEP 6: ATTACHMENTS --- */}
             {currentStep === 6 && (
-                <AttachmentModule onFinalize={handleFinalize} />
+                <AttachmentModule />
             )}
 
             {/* Navigation Footer */}
-            <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center">
-                <button
-                    onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
-                    className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <ChevronLeft size={16} /> Previous
-                </button>
-
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                    Step {currentStep} of {steps.length}
-                </span>
-
-                <button
-                    onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
-                    className={`text-[10px] font-black uppercase tracking-widest text-cyan-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-cyan-700'}`}
-                >
-                    Next Section <ChevronRight size={16} />
-                </button>
+            <div className="mt-10 border-t border-slate-100 pt-6">
+                <div className="mb-5 flex justify-between items-center">
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
+                        className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <ChevronLeft size={16} /> Previous
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                        Step {currentStep} of {steps.length}
+                    </span>
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
+                        className={`text-[10px] font-black uppercase tracking-widest text-cyan-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-cyan-700'}`}
+                    >
+                        Next Section <ChevronRight size={16} />
+                    </button>
+                </div>
+                <ConsultationSaveActions onSaveProgress={handleSaveProgress} onSave={handleFinalize} saving={saving} />
             </div>
         </div>
     );

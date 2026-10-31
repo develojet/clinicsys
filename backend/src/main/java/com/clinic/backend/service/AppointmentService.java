@@ -71,6 +71,9 @@ public class AppointmentService {
         if (request.getStatus() != null) {
             appointment.setStatus(normalizeStatus(request.getStatus()));
         }
+        if (request.getConsultationData() != null) {
+            appointment.setConsultationData(request.getConsultationData());
+        }
         return toDto(appointmentRepository.save(appointment));
     }
 
@@ -146,6 +149,7 @@ public class AppointmentService {
         dto.setReason(appointment.getReason());
         dto.setConsultationType(appointment.getConsultationType());
         dto.setCreatedBy(appointment.getCreatedBy());
+        dto.setConsultationData(appointment.getConsultationData());
         return dto;
     }
 }

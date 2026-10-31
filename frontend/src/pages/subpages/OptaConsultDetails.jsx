@@ -8,12 +8,19 @@ import {
 // Shared Components
 import PrescriptionModule from '../../components/consults/PrescriptionModule';
 import AttachmentModule from '../../components/consults/AttachmentModule';
+import ConsultationSaveActions from '../../components/consults/ConsultationSaveActions';
+import useConsultationFields from '../../hooks/useConsultationFields';
 
-const OptaConsultDetails = ({ visitData, onSave }) => {
+const OptaConsultDetails = ({ visitData, onSave, onSaveProgress, onDirtyChange, registerConsultationSnapshot, saving }) => {
     const [currentStep, setCurrentStep] = useState(1);
+    const { rootRef, buildConsultationData, captureCurrentStep } = useConsultationFields(visitData, currentStep);
 
-    const [prescriptions, setPrescriptions] = useState([{ id: 1, med: '', dose: '', freq: '', duration: '' }]);
-    const [attachments, setAttachments] = useState([]);
+    const [prescriptions, setPrescriptions] = useState(() =>
+        visitData.consultationData?.prescriptions?.length
+            ? visitData.consultationData.prescriptions
+            : [{ id: 1, med: '', dose: '', freq: '', duration: '' }]
+    );
+    const attachments = [];
 
     useEffect(() => {
         setCurrentStep(1);
@@ -28,16 +35,24 @@ const OptaConsultDetails = ({ visitData, onSave }) => {
         { id: 6, label: "Files", icon: Paperclip }
     ];
 
-    const handleFinalize = () => {
-        const finalData = {
+    const createConsultation = () => ({
             ...visitData,
             prescriptions,
             attachments,
+            consultationData: buildConsultationData('Opta', prescriptions, attachments),
             specialty: 'Ophthalmology',
-            completedAt: new Date().toISOString()
-        };
+    });
+
+    const handleFinalize = () => {
+        const finalData = createConsultation();
         if (onSave) onSave(finalData);
     };
+
+    const handleSaveProgress = () => onSaveProgress?.(createConsultation());
+
+    useEffect(() => {
+        registerConsultationSnapshot?.(createConsultation);
+    });
 
     const InputField = ({ label, value, placeholder = "", type = "text", dark = false }) => (
         <div className="flex flex-col text-left">
@@ -50,8 +65,7 @@ const OptaConsultDetails = ({ visitData, onSave }) => {
                     dark ? 'border-slate-700 text-white focus:border-emerald-400' : 'border-slate-200 focus:border-emerald-500 text-slate-800'
                 }`}
                 placeholder={placeholder}
-                value={value}
-                readOnly
+                defaultValue={value}
             />
         </div>
     );
@@ -73,7 +87,7 @@ const OptaConsultDetails = ({ visitData, onSave }) => {
     );
 
     return (
-        <div className="bg-white rounded-3xl shadow-xl border border-emerald-100 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
+        <div ref={rootRef} onChange={() => { captureCurrentStep(); onDirtyChange?.(); }} className="bg-white rounded-3xl shadow-xl border border-emerald-100 p-6 md:p-10 relative animate-in fade-in slide-in-from-top-4 duration-500">
             {/* Header Badge */}
             <div className="absolute top-0 right-10 -translate-y-1/2 bg-emerald-600 text-white px-5 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase shadow-lg z-10">
                 Ophthalmology Consultation #{visitData.id} — {visitData.date}
@@ -180,33 +194,34 @@ const OptaConsultDetails = ({ visitData, onSave }) => {
 
             {/* --- STEP 5: PRESCRIPTION --- */}
             {currentStep === 5 && (
-                <PrescriptionModule prescriptions={prescriptions} setPrescriptions={setPrescriptions} />
+                <PrescriptionModule prescriptions={prescriptions} setPrescriptions={setPrescriptions} onDirtyChange={onDirtyChange} />
             )}
 
             {/* --- STEP 6: ATTACHMENTS --- */}
             {currentStep === 6 && (
-                <AttachmentModule onFinalize={handleFinalize} />
+                <AttachmentModule />
             )}
 
             {/* Navigation Footer */}
-            <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center">
-                <button
-                    onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
-                    className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <ChevronLeft size={16} /> Previous
-                </button>
-
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                    Step {currentStep} of {steps.length}
-                </span>
-
-                <button
-                    onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
-                    className={`text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-emerald-700'}`}
-                >
-                    Next Section <ChevronRight size={16} />
-                </button>
+            <div className="mt-10 border-t border-slate-100 pt-6">
+                <div className="mb-5 flex justify-between items-center">
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.max(prev - 1, 1))}
+                        className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${currentStep === 1 ? 'invisible' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <ChevronLeft size={16} /> Previous
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                        Step {currentStep} of {steps.length}
+                    </span>
+                    <button
+                        onClick={() => setCurrentStep(prev => Math.min(prev + 1, steps.length))}
+                        className={`text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-1 ${currentStep === steps.length ? 'invisible' : 'hover:text-emerald-700'}`}
+                    >
+                        Next Section <ChevronRight size={16} />
+                    </button>
+                </div>
+                <ConsultationSaveActions onSaveProgress={handleSaveProgress} onSave={handleFinalize} saving={saving} />
             </div>
         </div>
     );

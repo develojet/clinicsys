@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paperclip, UserCheck, Stethoscope, Briefcase, Hash } from 'lucide-react';
 
-const AttachmentModule = ({ onFinalize }) => {
+const AttachmentModule = () => {
     // These would typically come from a context or a prop in a real scenario
     const doctorName = "Jethro Emmanuelle Orencia, MD";
     const specialization = "General Medicine";
@@ -54,24 +54,6 @@ const AttachmentModule = ({ onFinalize }) => {
                 </p>
             </div>
 
-            {/* Finalize Block */}
-            <div className="bg-green-50 p-6 rounded-2xl border border-green-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
-                        <UserCheck size={24} />
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-black text-green-800 uppercase">Finalize Record</h4>
-                        <p className="text-xs text-green-600">All data is validated and ready for the physician's signature.</p>
-                    </div>
-                </div>
-                <button
-                    onClick={onFinalize}
-                    className="bg-green-600 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-green-700 transition-all active:scale-95"
-                >
-                    Save & Close Consult
-                </button>
-            </div>
         </div>
     );
 };

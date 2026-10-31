@@ -1,8 +1,11 @@
 package com.clinic.backend.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "appointments")
@@ -34,6 +37,10 @@ public class Appointment {
 
     @Column(name = "created_by")
     private String createdBy;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "consultation_data", columnDefinition = "json")
+    private Map<String, Object> consultationData;
 
     public Integer getAppointmentId() {
         return appointmentId;
@@ -97,5 +104,13 @@ public class Appointment {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public Map<String, Object> getConsultationData() {
+        return consultationData;
+    }
+
+    public void setConsultationData(Map<String, Object> consultationData) {
+        this.consultationData = consultationData;
     }
 }
