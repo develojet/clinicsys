@@ -9,10 +9,11 @@ export default function ProtectedRoute({ allowedRoles }) {
         return <Navigate to="/login" replace />;
     }
 
-    if (allowedRoles && user?.role) {
-        const userRole = String(user.role).replace('ROLE_', '').toUpperCase();
+    if (allowedRoles) {
+        const rawRole = user?.role || user?.accessLevel;
+        const userRole = String(rawRole || '').replace(/^ROLE_/i, '').toUpperCase();
         const normalizedAllowedRoles = allowedRoles.map(role =>
-            String(role).replace('ROLE_', '').toUpperCase()
+            String(role).replace(/^ROLE_/i, '').toUpperCase()
         );
 
         if (!normalizedAllowedRoles.includes(userRole)) {

@@ -19,6 +19,7 @@ public class PatientDto {
     private String sex;
     private String status;
     private String mobileNumber;
+    private String email;
     private String address;
     private String employerAddress;
     private String occupation;

@@ -47,6 +47,8 @@ public class Patient {
 
     private String mobileNumber;
 
+    private String email;
+
     @Column(length = 500)
     private String address;
 
